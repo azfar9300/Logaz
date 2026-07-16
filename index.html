@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LOGAZ by Azvar - AI Push-Up Tracker</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {            
+            --bg-color: #ffffff;          
+            --card-bg: #f8fafc;           
+            --text-main: #0f172a;         
+            --text-muted: #64748b;        
+            --border-color: #e2e8f0;      
+
+            --primary: #0284c7;           
+            --success: #166534;           
+            --danger: #ef4444;            
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+            transition: background-color 0.3s ease;
+        }
+
+        
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #0f172a; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+
+        .loader-content {
+            text-align: center;
+        }
+
+        .loader-content i {
+            font-size: 4rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+
+        .fa-spin-fast {
+            animation: fa-spin 1.5s infinite linear;
+        }
+
+        .loader-content h2 {
+            font-size: 3.5rem;
+            font-weight: 900;
+            letter-spacing: 2px;
+            background: linear-gradient(to right, var(--primary), #ffffff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .loader-content p {
+            color: var(--primary);
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 4px;
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+        }
+
+        .progress-bar {
+            width: 280px;
+            height: 4px;
+            background: #334155;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 0 auto 1rem auto;
+        }
+
+        .progress-fill {
+            width: 30%;
+            height: 100%;
+            background: linear-gradient(to right, var(--primary), #ffffff);
+            border-radius: 10px;
+            animation: loading-bar 2s infinite ease-in-out;
+        }
+
+        #loading-status {
+            color: #94a3b8;
+            font-size: 0.85rem;
+        }
+
+        .fade-out {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        @keyframes loading-bar {
+            0% { width: 0%; min-width: 0%; }
+            50% { width: 70%; }
+            100% { width: 100%; }
+        }
+      
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 1rem;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        header h1 {
+            font-size: 3.2rem;
+            font-weight: 900;
+            letter-spacing: -1px;
+            color: var(--text-main);
+            display: inline-flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        header h1 i {
+            color: var(--primary); 
+        }
+
+        .dashboard {
+            display: flex;
+            gap: 2.5rem;
+            max-width: 1200px;
+            width: 100%;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .video-container {
+            position: relative;
+            background: var(--bg-color);
+            padding: 0.5rem;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.08); 
+            border: 1px solid var(--border-color);
+            display: inline-block;
+            transition: box-shadow 0.3s ease;
+        }
+
+        video, canvas {
+            border-radius: 18px;
+            transform: scaleX(-1); 
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .sidebar {
+            flex: 1;
+            min-width: 340px;
+            max-width: 420px;
+            display: flex;
+            flex-direction: column;
+            gap: 1.75rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 1.75rem;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.03);
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .card-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
+            background: var(--bg-color); 
+            color: var(--text-main); 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.75rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .card-info h3 {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        .card-info .value {
+            font-size: 2.2rem;
+            font-weight: 800;
+            line-height: 1.1;
+            color: var(--text-main);
+        }
+        
+        .status-valid {
+            border-color: rgba(22, 101, 52, 0.2);
+            background-color: rgba(22, 101, 52, 0.02);
+        }
+        .status-valid .card-icon {
+            color: var(--success);
+            border-color: rgba(22, 101, 52, 0.1);
+        }
+        
+        .status-invalid {
+            border-color: rgba(239, 68, 68, 0.2); 
+            background-color: rgba(239, 68, 68, 0.02);
+        }
+        .status-invalid .card-icon {
+            color: var(--danger);
+            border-color: rgba(239, 68, 68, 0.1);
+        }
+                
+        #counter-card {
+            background-color: #f0f9ff; 
+            border-color: rgba(2, 132, 199, 0.2);
+        }
+        #counter-card .card-icon {
+            background-color: var(--primary);
+            color: #ffffff;
+            border-color: var(--primary);
+        }
+        #counter-card .value {
+            font-size: 4rem;
+            color: var(--primary);
+        }
+        
+        .instruction-box {
+            background: var(--card-bg);
+            border-left: 5px solid var(--primary); 
+            padding: 1.25rem;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            color: var(--text-main);
+            border-top: 1px solid var(--border-color);
+            border-right: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+        }
+
+        .instruction-box strong {
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+            font-weight: 700;
+        }
+
+        .instruction-box ul {
+            margin-left: 1.5rem;
+            list-style-type: decimal; 
+        }
+        
+        .instruction-box li {
+            margin-bottom: 0.5rem;
+            color: var(--text-muted);
+        }
+        
+        .instruction-box li b {
+            color: var(--text-main);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loading-screen">
+        <div class="loader-content">
+            <i class="fa-solid fa-dumbbell fa-spin-fast"></i>
+            <h2>LOGAZ</h2>
+            <p>by Azvar</p>
+            <div class="progress-bar">
+                <div class="progress-fill"></div>
+            </div>
+            <span id="loading-status">Menginisialisasi Model AI...</span>
+        </div>
+    </div>
+
+    <header>
+        <h1><i class="fa-solid fa-dumbbell"></i> LOGAZ</h1>
+        <p style="color: var(--text-muted); font-weight: 400; letter-spacing: 2px; font-size: 1rem; text-transform: uppercase; margin-top: 0.5rem;">Workout Assistant by Azvar</p>
+    </header>
+
+    <div class="dashboard">
+        <div class="video-container">
+            <video id="webcam" width="640" height="480" autoplay playsinline style="display:none;"></video>
+            <canvas id="output_canvas" width="640" height="480"></canvas>
+        </div>
+
+        <div class="sidebar">
+            
+            <div class="card" id="counter-card">
+                <div class="card-icon"><i class="fa-solid fa-stopwatch"></i></div>
+                <div class="card-info">
+                    <h3>Total Repetisi</h3>
+                    <div class="value" id="pushup-count">0</div>
+                </div>
+            </div>
+
+            <div class="card" id="status-card">
+                <div class="card-icon" id="status-icon"><i class="fa-solid fa-user-clock"></i></div>
+                <div class="card-info">
+                    <h3>Status Sistem</h3>
+                    <div class="value" id="status-text" style="font-size: 1.4rem;">Mencari Tubuh...</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-icon"><i class="fa-solid fa-angle-right"></i></div>
+                <div class="card-info">
+                    <h3>Sudut Siku</h3>
+                    <div class="value" id="angle-text">0°</div>
+                </div>
+            </div>
+
+            <div class="instruction-box">
+                <strong><i class="fa-solid fa-lightbulb"></i> PANDUAN CEPAT</strong>
+                <ul>
+                    <li>Letakkan laptop di lantai/meja rendah.</li>
+                    <li>Ambil posisi push-up secara <b>menyamping</b> menghadap kamera.</li>
+                    <li>Pastikan Bahu, Siku, dan Pinggul masuk di dalam layar.</li>
+                </ul>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
