@@ -5,19 +5,22 @@ const videoElement = document.getElementById('webcam');
 const canvasElement = document.getElementById('output_canvas');
 const canvasCtx = canvasElement.getContext('2d');
 
-// Sinkronisasi dengan ID elemen di HTML baru
 const statusWrapper = document.getElementById('status-wrapper');
 const statusText = document.getElementById('status-text');
 const angleText = document.getElementById('angle-text');
 const countText = document.getElementById('pushup-count');
 
-// Elemen UI Modal Kalender
+// Modal Riwayat Latihan
 const historyModal = document.getElementById('history-modal');
 const openHistoryBtn = document.getElementById('open-history-btn');
 const closeHistoryBtn = document.getElementById('close-history-btn');
 const historyContainer = document.getElementById('history-items-container');
 
-// Variabel Kontrol Logika Push-Up & Counter
+// Modal Panduan Prosedur (BARU)
+const infoModal = document.getElementById('info-modal');
+const openInfoBtn = document.getElementById('open-info-btn');
+const closeInfoBtn = document.getElementById('close-info-btn');
+
 let pushUpCount = 0;
 let posisiState = "UP";       
 let sedangTurun = false;     
@@ -67,47 +70,57 @@ pose.onResults(onResults);
 // 4. FUNGSI UTAMA PEMROSESAN FRAME VIDEO (REAL-TIME DETEKSI)
 // =========================================================================
 function onResults(results) {
-  // Proteksi jika frame video belum siap sepenuhnya
   if (!results.image) return;
 
   const imgWidth = results.image.width;
   const imgHeight = results.image.height;
 
-  // Kunci resolusi internal kanvas agar pas 1:1 dengan rasio feed video asli kamera
+  // Kunci resolusi internal kanvas tepat 1:1 dengan resolusi video asli kamera
+  // Ini otomatis menghilangkan bug zoom karena resolusi gambar dan wadahnya sinkron
   if (canvasElement.width !== imgWidth || canvasElement.height !== imgHeight) {
       canvasElement.width = imgWidth;
       canvasElement.height = imgHeight;
   }
+
+  // Bersihkan layar kanvas setiap frame baru
+  canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+  canvasCtx.save();
+  
+  // Gambar frame video secara utuh sesuai resolusi aslinya (Tanpa di-crop)
+  canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 
   // JIKA LANDMARKS TIDAK TERDETEKSI
   if (!results.poseLandmarks) {
       statusWrapper.className = "status-container status-invalid";
       statusText.innerHTML = "BELUM SIAP"; 
       angleText.innerText = "0°";
-      
-      canvasCtx.save();
-      canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-      canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
       canvasCtx.restore();
       return;
   }
 
-  // JIKA TERDETEKSI, PROSES GAMBAR & HUBUNGKAN SKELETON AI
-  canvasCtx.save();
-  canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-  
-  // Render gambar kamera full mengikuti resolusi internal
-  canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+  // JIKA TERDETEKSI, SKALA KOORDINAT AI SESUAIKAN DENGAN UKURAN KANVAS ASLI
+  canvasCtx.scale(canvasElement.width, canvasElement.height);
 
-  // Menggunakan warna cyan (#00bcd4) dan putih premium agar sinkron dengan UI MOSVAR
+  // Karena tidak ada pemotongan gambar (clipping), mapping koordinat jadi lebih sederhana dan ringan
+  const adjustedLandmarks = results.poseLandmarks.map(landmark => {
+      return {
+          x: landmark.x,
+          y: landmark.y,
+          z: landmark.z,
+          visibility: landmark.visibility
+      };
+  });
+
+  // Gambar koneksi poin tubuh (Cyan & Putih Premium) pas di atas badan
   const koneksiPose = window.POSE_CONNECTIONS || [];
-  drawConnectors(canvasCtx, results.poseLandmarks, koneksiPose, {color: '#00bcd4', lineWidth: 4});
-  drawLandmarks(canvasCtx, results.poseLandmarks, {color: '#ffffff', lineWidth: 1, radius: 5});
+  drawConnectors(canvasCtx, adjustedLandmarks, koneksiPose, {color: '#00bcd4', lineWidth: 0.006});
+  drawLandmarks(canvasCtx, adjustedLandmarks, {color: '#ffffff', lineWidth: 0.002, radius: 0.007});
   
   canvasCtx.restore();
 
   // -------------------------------------------------------------------------
-  // LOGIKA HITUNGAN PUSH UP
+  // LOGIKA HITUNGAN PUSH UP (Sisa kode di bawahnya tetap sama seperti sebelumnya...)
   // -------------------------------------------------------------------------
   const bahu = results.poseLandmarks[11];
   const siku = results.poseLandmarks[13];
@@ -155,7 +168,7 @@ function onResults(results) {
 }
 
 // =========================================================================
-// 5. LOGIKA PENYIMPANAN OTOMATIS & POP-UP KALENDER
+// 5. LOGIKA PENYIMPANAN OTOMATIS & POP-UP MODAL (KALENDER & INFO)
 // =========================================================================
 function simpanProgressKeLokal() {
     let riwayatLatihan = JSON.parse(localStorage.getItem('logaz_history')) || {};
@@ -196,23 +209,31 @@ function tampilkanRiwayatKalender() {
     });
 }
 
+// Event Listeners untuk Modal Kalender
 openHistoryBtn.addEventListener('click', () => {
     tampilkanRiwayatKalender();
     historyModal.style.display = 'flex';
 });
-
 closeHistoryBtn.addEventListener('click', () => {
     historyModal.style.display = 'none';
 });
 
+// Event Listeners untuk Modal Info Prosedur (BARU)
+openInfoBtn.addEventListener('click', () => {
+    infoModal.style.display = 'flex';
+});
+closeInfoBtn.addEventListener('click', () => {
+    infoModal.style.display = 'none';
+});
+
+// Tutup modal otomatis jika klik area background luar luar modal manapun
 window.addEventListener('click', (e) => {
-    if (e.target === historyModal) {
-        historyModal.style.display = 'none';
-    }
+    if (e.target === historyModal) historyModal.style.display = 'none';
+    if (e.target === infoModal) infoModal.style.display = 'none';
 });
 
 // =========================================================================
-// 6. MENJALANKAN KAMERA LAPTOP / HP (DENGAN PENANGANAN BUG BLANK)
+// 6. MENJALANKAN KAMERA LAPTOP / HP 
 // =========================================================================
 const camera = new Camera(videoElement, {
   onFrame: async () => {

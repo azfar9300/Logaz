@@ -50,15 +50,23 @@
             top: 0; left: 0;
             width: 100%; height: 100%;
             z-index: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #000;
         }
 
-        video, canvas {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transform: scaleX(-1);
-            display: block;
+        video {
+            display: none !important; /* Menyembunyikan video mentah bawaan browser */
         }
+
+        canvas {
+        width: 100%;
+        height: 100%;
+        object-fit: contain; /* DIUBAH: Menampilkan seluruh area kamera tanpa terpotong/zoom */
+        transform: scaleX(-1); /* Efek cermin tetap aktif */
+        display: block;
+       }
 
          .left-controls {
             position: absolute;
@@ -226,7 +234,7 @@
             font-weight: 150;
         }
 
-        /* Style Pop-up Modal Kalender Modern */
+        /* Style Pop-up Modal Kalender & Prosedur Modern */
         .modal {
             display: none; 
             position: fixed;
@@ -274,8 +282,8 @@
             -webkit-text-fill-color: transparent;
         }
 
-        .history-list {
-            max-height: 240px;
+        .history-list, .instruction-list {
+            max-height: 260px;
             overflow-y: auto;
             margin-top: 1rem;
             border-top: 1px solid rgba(255, 255, 255, 0.08);
@@ -308,18 +316,54 @@
             border-radius: 12px;
             box-shadow: 0 4px 12px rgba(0, 242, 254, 0.2);
         }
+
+        /* Gaya Khusus Prosedur Langkah Penggunaan */
+        .step-item {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            padding: 0.75rem 0.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .step-item:last-child {
+            border-bottom: none;
+        }
+        .step-number {
+            background: var(--primary-glow);
+            color: #fff;
+            font-weight: 700;
+            width: 24px; height: 24px;
+            min-width: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+        }
+        .step-text {
+            font-size: 0.85rem;
+            color: #cbd5e1;
+            line-height: 1.4;
+        }
+        .step-text strong {
+            color: #fff;
+        }
     </style>
 </head>
 <body>
 
     <div class="camera-wrapper">
-        <video id="webcam" autoplay playsinline style="display:none;"></video>
+        <video id="webcam" autoplay playsinline></video>
         <canvas id="output_canvas"></canvas>
     </div>
 
+    <!-- Panel Tombol Samping (Ditambahkan Tombol Info Prosedur) -->
     <div class="left-controls">
         <button class="btn-action" id="open-history-btn" title="Aktifitas Harian">
             <i class="fa-solid fa-ellipsis-vertical"></i>
+        </button>
+        <button class="btn-action" id="open-info-btn" title="Prosedur Penggunaan">
+            <i class="fa-solid fa-circle-info"></i>
         </button>
         <button class="btn-action" onclick="window.location.reload();" title="Reset/Kembali">
             <i class="fa-solid fa-arrow-rotate-left"></i>
@@ -344,12 +388,41 @@
         </div>
     </div>
 
+    <!-- MODAL 1: Riwayat Kalender Latihan -->
     <div class="modal" id="history-modal">
         <div class="modal-content">
             <span class="close-modal" id="close-history-btn">&times;</span>
             <h2><i class="fa-solid fa-calendar-check"></i> Log Aktifitas</h2>
             <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.5rem;">Total riwayat harian tersimpan otomatis.</p>
             <div class="history-list" id="history-items-container"></div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: Prosedur Penggunaan Aplikasi (BARU) -->
+    <div class="modal" id="info-modal">
+        <div class="modal-content">
+            <span class="close-modal" id="close-info-btn">&times;</span>
+            <h2><i class="fa-solid fa-circle-info"></i> Panduan MOSVAR</h2>
+            <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.5rem;">Ikuti prosedur untuk akurasi sensor AI:</p>
+            
+            <div class="instruction-list">
+                <div class="step-item">
+                    <div class="step-number">1</div>
+                    <div class="step-text">Letakkan perangkat smartphone/laptop di lantai dengan posisi **miring menghadap tubuh samping** kamu.</div>
+                </div>
+                <div class="step-item">
+                    <div class="step-number">2</div>
+                    <div class="step-text">Mundurlah hingga **seluruh bagian tubuh** (dari kepala, bahu, siku, pinggul, sampai kaki) masuk ke dalam frame kamera.</div>
+                </div>
+                <div class="step-item">
+                    <div class="step-number">3</div>
+                    <div class="step-text">Masuk ke posisi *Plank/Push-Up*. Jika posisi tubuh sudah pas, status kanan atas akan berubah menjadi **SIAP (Hijau)**.</div>
+                </div>
+                <div class="step-item">
+                    <div class="step-number">4</div>
+                    <div class="step-text">Lakukan gerakan turun (*Down*) hingga sudut siku **di bawah 100°**, lalu dorong naik (*Up*) sampai tangan lurus **di atas 160°** untuk dihitung 1 repetisi.</div>
+                </div>
+            </div>
         </div>
     </div>
 
