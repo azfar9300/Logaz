@@ -2,27 +2,30 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LOGAZ by Azvar - AI Push-Up Tracker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MOSVAR - AI Push-Up Tracker</title>
     
+    <!-- Library MediaPipe -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
     
+    <!-- Google Fonts & FontAwesome Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
-        :root {            
-            --bg-color: #ffffff;          
-            --card-bg: #f8fafc;           
-            --text-main: #0f172a;         
-            --text-muted: #64748b;        
-            --border-color: #e2e8f0;      
-
-            --primary: #0284c7;           
-            --success: #166534;           
-            --danger: #ef4444;            
+        :root {
+            /* Warna Gradien Modern & Kaca Premium */
+            --bg-glass: rgba(15, 23, 42, 0.45); /* Gelap transparan tipis */
+            --border-glass: rgba(255, 255, 255, 0.08);
+            --text-light: #ffffff;
+            
+            /* Palet Neon Glow Modern */
+            --primary-glow: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%); /* Cyan ke Biru Elektrik */
+            --success-glow: linear-gradient(135deg, #00ff87 0%, #60efff 100%); /* Hijau Mint ke Cyan */
+            --danger-glow: linear-gradient(135deg, #ff0844 0%, #ffb199 100%);  /* Merah Sunset Menyala */
+            --warn-glow: linear-gradient(135deg, #f6d365 0%, #fda085 100%);    /* Oranye Gold */
         }
 
         * {
@@ -30,328 +33,323 @@
             margin: 0;
             padding: 0;
             font-family: 'Poppins', sans-serif;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 2rem;
-            transition: background-color 0.3s ease;
-        }
-
-        
-        #loading-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
+        body, html {
             width: 100%;
             height: 100%;
-            background-color: #0f172a; 
+            overflow: hidden;
+            background-color: #111827; /* Dasar gelap pekat supaya gradien menyala */
+            position: relative;
+        }
+
+        /* Container Utama Kamera Full Screen */
+        .camera-wrapper {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 1;
+        }
+
+        video, canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+            display: block;
+        }
+
+         .left-controls {
+            position: absolute;
+            top: 0; left: 0;
+            z-index: 10;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
+            gap: 16px; /* Jarak antar tombol diperkecil */
+            background: rgba(20, 20, 20, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 12px 6px 20px 6px; /* Padding dipangkas */
+            border-bottom-right-radius: 25px; /* Lengkungan disesuaikan */
+            border-right: 1px solid var(--border-glass);
+            border-bottom: 1px solid var(--border-glass);
             align-items: center;
-            z-index: 9999;
-            transition: opacity 0.5s ease, visibility 0.5s ease;
+            box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.3);
         }
 
-        .loader-content {
-            text-align: center;
+        .btn-action {
+            background: none;
+            border: none;
+            color: var(--text-light);
+            font-size: 1.2rem; /* Ukuran icon dikecilkan */
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            width: 32px; height: 32px; /* Dimensi tombol diperkecil */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+   
+       .btn-action:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #00f2fe;
+            transform: scale(1.05);
+        }
+       .btn-action:active { 
+            transform: scale(0.95); 
+        }
+       
+        .status-container {
+            position: absolute;
+            top: 25px; right: 20px;
+            z-index: 10;
+            text-align: right;
+            filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
         }
 
-        .loader-content i {
-            font-size: 4rem;
-            color: var(--primary);
-            margin-bottom: 1rem;
-        }
-
-        .fa-spin-fast {
-            animation: fa-spin 1.5s infinite linear;
-        }
-
-        .loader-content h2 {
-            font-size: 3.5rem;
+        #status-text {
+            font-size: 1.1rem;
             font-weight: 900;
-            letter-spacing: 2px;
-            background: linear-gradient(to right, var(--primary), #ffffff);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            
+            /* Efek Text Gradient */
+            background: var(--danger-glow);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            
+            transition: all 0.3s ease;
+        }
+
+        /* Perubahan warna gradien dinamis berdasarkan status AI */
+        .status-valid #status-text { 
+            background: var(--success-glow);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .status-invalid #status-text { 
+            background: var(--danger-glow);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .status-warn #status-text { 
+            background: var(--warn-glow);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
-        .loader-content p {
-            color: var(--primary);
+        /* Teks MOSVAR melayang pas di atas batas panel kanan bawah */
+        .app-name {
+            position: absolute;
+            right: 0;
+            bottom: 30%; /* Sedikit diangkat mengikuti tinggi panel 30% */
+            width: 90px; 
+            font-size: 0.95rem;
+            font-weight: 900;
+            color: var(--text-light);
+            letter-spacing: 2px;
             text-transform: uppercase;
+            text-align: center;
+            padding-bottom: 8px;
+            z-index: 11;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+            opacity: 0.9;
+        }
+     
+        .right-panel-bottom {
+            position: absolute;
+            bottom: 0; right: 0;
+            width: 90px; 
+            height: 30%; 
+            background: var(--bg-glass); 
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(16px);
+            z-index: 10;
+            border-left: 1px solid var(--border-glass);
+            border-top: 1px solid rgba(255, 255, 255, 0.15); /* Garis atas lebih terang */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            justify-content: space-evenly;
+            box-shadow: -8px -8px 32px 0 rgba(0, 0, 0, 0.25);
+            padding: 10px 0;
+        }
+
+        .info-group {
+            width: 100%;
+        }
+
+        .info-label {
+            font-size: 0.75rem;
             font-weight: 700;
-            letter-spacing: 4px;
-            font-size: 0.9rem;
-            margin-bottom: 2rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+            opacity: 0.8;
         }
 
-        .progress-bar {
-            width: 280px;
-            height: 4px;
-            background: #334155;
-            border-radius: 10px;
-            overflow: hidden;
-            margin: 0 auto 1rem auto;
+        /* Label REPETISI menggunakan warna gradien cyan */
+        .info-group:first-child .info-label {
+            background: var(--primary-glow);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
-        .progress-fill {
-            width: 30%;
-            height: 100%;
-            background: linear-gradient(to right, var(--primary), #ffffff);
-            border-radius: 10px;
-            animation: loading-bar 2s infinite ease-in-out;
+        /* Label SUDUT SIKU tetap putih bersih */
+        #angle-label {
+            color: var(--text-light) !important; 
         }
 
-        #loading-status {
+        .info-value {
+            font-size: 2.8rem;
+            font-weight: 200;
+            line-height: 1.1;
+            letter-spacing: -1px;
+        }
+
+        /* Nilai Angka REPETISI menggunakan efek gradien menyala */
+        #pushup-count {
+            background: var(--primary-glow);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: inline-block;
+        }
+
+        /* Nilai Angka SUDUT SIKU */
+        #angle-text {
+            font-size: 2.4rem;
+            color: var(--text-light);
+            font-weight: 150;
+        }
+
+        /* Style Pop-up Modal Kalender Modern */
+        .modal {
+            display: none; 
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(10, 15, 30, 0.7);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: #1e293b; /* Warna tema slate gelap */
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            border-radius: 28px;
+            max-width: 360px;
+            width: 85%;
+            position: relative;
+            color: #f8fafc;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 1.25rem; right: 1.5rem;
+            font-size: 1.6rem;
+            cursor: pointer;
             color: #94a3b8;
+            transition: color 0.2s;
+        }
+        .close-modal:hover { color: #f1f5f9; }
+
+        .modal h2 {
+            font-size: 1.3rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            background: var(--primary-glow);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .history-list {
+            max-height: 240px;
+            overflow-y: auto;
+            margin-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            padding-top: 1rem;
+        }
+
+        /* Gaya Baris Riwayat Latihan */
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            background: rgba(255, 255, 255, 0.03);
+            margin-bottom: 0.6rem;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
             font-size: 0.85rem;
         }
 
-        .fade-out {
-            opacity: 0;
-            visibility: hidden;
+        .history-date {
+            font-weight: 500;
+            color: #cbd5e1;
         }
 
-        @keyframes loading-bar {
-            0% { width: 0%; min-width: 0%; }
-            50% { width: 70%; }
-            100% { width: 100%; }
-        }
-      
-        header {
-            text-align: center;
-            margin-bottom: 3rem;
-            border-bottom: 2px solid var(--border-color);
-            padding-bottom: 1rem;
-            width: 100%;
-            max-width: 1200px;
-        }
-
-        header h1 {
-            font-size: 3.2rem;
-            font-weight: 900;
-            letter-spacing: -1px;
-            color: var(--text-main);
-            display: inline-flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        header h1 i {
-            color: var(--primary); 
-        }
-
-        .dashboard {
-            display: flex;
-            gap: 2.5rem;
-            max-width: 1200px;
-            width: 100%;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-
-        .video-container {
-            position: relative;
-            background: var(--bg-color);
-            padding: 0.5rem;
-            border-radius: 24px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.08); 
-            border: 1px solid var(--border-color);
-            display: inline-block;
-            transition: box-shadow 0.3s ease;
-        }
-
-        video, canvas {
-            border-radius: 18px;
-            transform: scaleX(-1); 
-            max-width: 100%;
-            height: auto;
-            display: block;
-        }
-
-        .sidebar {
-            flex: 1;
-            min-width: 340px;
-            max-width: 420px;
-            display: flex;
-            flex-direction: column;
-            gap: 1.75rem;
-        }
-
-        .card {
-            background: var(--card-bg);
-            border-radius: 20px;
-            padding: 1.75rem;
-            border: 1px solid var(--border-color);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.03);
-            display: flex;
-            align-items: center;
-            gap: 1.5rem;
-            transition: all 0.3s ease;
-        }
-
-        .card-icon {
-            width: 64px;
-            height: 64px;
-            border-radius: 16px;
-            background: var(--bg-color); 
-            color: var(--text-main); 
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.75rem;
-            border: 1px solid var(--border-color);
-        }
-
-        .card-info h3 {
-            font-size: 0.9rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-weight: 600;
-        }
-
-        .card-info .value {
-            font-size: 2.2rem;
+        .history-reps {
             font-weight: 800;
-            line-height: 1.1;
-            color: var(--text-main);
-        }
-        
-        .status-valid {
-            border-color: rgba(22, 101, 52, 0.2);
-            background-color: rgba(22, 101, 52, 0.02);
-        }
-        .status-valid .card-icon {
-            color: var(--success);
-            border-color: rgba(22, 101, 52, 0.1);
-        }
-        
-        .status-invalid {
-            border-color: rgba(239, 68, 68, 0.2); 
-            background-color: rgba(239, 68, 68, 0.02);
-        }
-        .status-invalid .card-icon {
-            color: var(--danger);
-            border-color: rgba(239, 68, 68, 0.1);
-        }
-                
-        #counter-card {
-            background-color: #f0f9ff; 
-            border-color: rgba(2, 132, 199, 0.2);
-        }
-        #counter-card .card-icon {
-            background-color: var(--primary);
             color: #ffffff;
-            border-color: var(--primary);
-        }
-        #counter-card .value {
-            font-size: 4rem;
-            color: var(--primary);
-        }
-        
-        .instruction-box {
-            background: var(--card-bg);
-            border-left: 5px solid var(--primary); 
-            padding: 1.25rem;
+            background: var(--primary-glow);
+            padding: 0.2rem 0.6rem;
             border-radius: 12px;
-            font-size: 0.95rem;
-            color: var(--text-main);
-            border-top: 1px solid var(--border-color);
-            border-right: 1px solid var(--border-color);
-            border-bottom: 1px solid var(--border-color);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
-        }
-
-        .instruction-box strong {
-            color: var(--primary);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin-bottom: 0.75rem;
-            font-weight: 700;
-        }
-
-        .instruction-box ul {
-            margin-left: 1.5rem;
-            list-style-type: decimal; 
-        }
-        
-        .instruction-box li {
-            margin-bottom: 0.5rem;
-            color: var(--text-muted);
-        }
-        
-        .instruction-box li b {
-            color: var(--text-main);
+            box-shadow: 0 4px 12px rgba(0, 242, 254, 0.2);
         }
     </style>
 </head>
 <body>
 
-    <div id="loading-screen">
-        <div class="loader-content">
-            <i class="fa-solid fa-dumbbell fa-spin-fast"></i>
-            <h2>LOGAZ</h2>
-            <p>by Azvar</p>
-            <div class="progress-bar">
-                <div class="progress-fill"></div>
-            </div>
-            <span id="loading-status">Menginisialisasi Model AI...</span>
+    <div class="camera-wrapper">
+        <video id="webcam" autoplay playsinline style="display:none;"></video>
+        <canvas id="output_canvas"></canvas>
+    </div>
+
+    <div class="left-controls">
+        <button class="btn-action" id="open-history-btn" title="Aktifitas Harian">
+            <i class="fa-solid fa-ellipsis-vertical"></i>
+        </button>
+        <button class="btn-action" onclick="window.location.reload();" title="Reset/Kembali">
+            <i class="fa-solid fa-arrow-rotate-left"></i>
+        </button>
+    </div>
+
+    <div class="status-container" id="status-wrapper">
+        <div id="status-text">BELUM SIAP</div>
+    </div>
+
+    <div class="app-name">MOSVAR</div>
+
+    <div class="right-panel-bottom">
+        <div class="info-group">
+            <div class="info-label">REPETISI</div>
+            <div class="info-value" id="pushup-count">0</div>
+        </div>
+
+        <div class="info-group">
+            <div class="info-label" id="angle-label">SUDUT SIKU</div>
+            <div class="info-value" id="angle-text">0°</div>
         </div>
     </div>
 
-    <header>
-        <h1><i class="fa-solid fa-dumbbell"></i> LOGAZ</h1>
-        <p style="color: var(--text-muted); font-weight: 400; letter-spacing: 2px; font-size: 1rem; text-transform: uppercase; margin-top: 0.5rem;">Workout Assistant by Azvar</p>
-    </header>
-
-    <div class="dashboard">
-        <div class="video-container">
-            <video id="webcam" width="640" height="480" autoplay playsinline style="display:none;"></video>
-            <canvas id="output_canvas" width="640" height="480"></canvas>
-        </div>
-
-        <div class="sidebar">
-            
-            <div class="card" id="counter-card">
-                <div class="card-icon"><i class="fa-solid fa-stopwatch"></i></div>
-                <div class="card-info">
-                    <h3>Total Repetisi</h3>
-                    <div class="value" id="pushup-count">0</div>
-                </div>
-            </div>
-
-            <div class="card" id="status-card">
-                <div class="card-icon" id="status-icon"><i class="fa-solid fa-user-clock"></i></div>
-                <div class="card-info">
-                    <h3>Status Sistem</h3>
-                    <div class="value" id="status-text" style="font-size: 1.4rem;">Mencari Tubuh...</div>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-icon"><i class="fa-solid fa-angle-right"></i></div>
-                <div class="card-info">
-                    <h3>Sudut Siku</h3>
-                    <div class="value" id="angle-text">0°</div>
-                </div>
-            </div>
-
-            <div class="instruction-box">
-                <strong><i class="fa-solid fa-lightbulb"></i> PANDUAN CEPAT</strong>
-                <ul>
-                    <li>Letakkan laptop di lantai/meja rendah.</li>
-                    <li>Ambil posisi push-up secara <b>menyamping</b> menghadap kamera.</li>
-                    <li>Pastikan Bahu, Siku, dan Pinggul masuk di dalam layar.</li>
-                </ul>
-            </div>
-
+    <div class="modal" id="history-modal">
+        <div class="modal-content">
+            <span class="close-modal" id="close-history-btn">&times;</span>
+            <h2><i class="fa-solid fa-calendar-check"></i> Log Aktifitas</h2>
+            <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.5rem;">Total riwayat harian tersimpan otomatis.</p>
+            <div class="history-list" id="history-items-container"></div>
         </div>
     </div>
 

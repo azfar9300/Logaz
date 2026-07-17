@@ -1,19 +1,63 @@
+// =========================================================================
+// 1. INISIALISASI ELEMEN UI & VARIABEL UTAMA
+// =========================================================================
 const videoElement = document.getElementById('webcam');
 const canvasElement = document.getElementById('output_canvas');
 const canvasCtx = canvasElement.getContext('2d');
 
-// Mengambil elemen UI Dashboard & Loading
-let modelSudahSiap = false;
-const loadingScreen = document.getElementById('loading-screen');
-const loadingStatus = document.getElementById('loading-status');
-
-const statusCard = document.getElementById('status-card');
-const statusIcon = document.getElementById('status-icon');
+// Sinkronisasi dengan ID elemen di HTML baru
+const statusWrapper = document.getElementById('status-wrapper');
 const statusText = document.getElementById('status-text');
 const angleText = document.getElementById('angle-text');
 const countText = document.getElementById('pushup-count');
 
-// 1. Konfigurasi Awal MediaPipe Pose
+// Elemen UI Modal Kalender
+const historyModal = document.getElementById('history-modal');
+const openHistoryBtn = document.getElementById('open-history-btn');
+const closeHistoryBtn = document.getElementById('close-history-btn');
+const historyContainer = document.getElementById('history-items-container');
+
+// Variabel Kontrol Logika Push-Up & Counter
+let pushUpCount = 0;
+let posisiState = "UP";       
+let sedangTurun = false;     
+
+// Menyesuaikan resolusi kanvas agar responsif full screen
+function sesuaikanUkuranKanvas() {
+    canvasElement.width = window.innerWidth;
+    canvasElement.height = window.innerHeight;
+}
+window.addEventListener('resize', sesuaikanUkuranKanvas);
+sesuaikanUkuranKanvas();
+
+// =========================================================================
+// 2. FUNGSI MATEMATIKA & PEMBANTU (HELPERS)
+// =========================================================================
+function hitungSudut(A, B, C) {
+    let radians = Math.atan2(C.y - B.y, C.x - B.x) - Math.atan2(A.y - B.y, A.x - B.x);
+    let angle = Math.abs((radians * 180.0) / Math.PI);
+    if (angle > 180.0) angle = 360.0 - angle;
+    return angle;
+}
+
+function getTanggalHariIni() {
+    const hari = new Date();
+    const dd = String(hari.getDate()).padStart(2, '0');
+    const mm = String(hari.getMonth() + 1).padStart(2, '0'); 
+    const yyyy = hari.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+}
+
+function putarSuara(teks) {
+    let speech = new SpeechSynthesisUtterance(teks);
+    speech.lang = 'id-ID'; 
+    speech.rate = 1.1;     
+    window.speechSynthesis.speak(speech);
+}
+
+// =========================================================================
+// 3. KONFIGURASI MEDIAPIPE POSE AI
+// =========================================================================
 const pose = new Pose({
   locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
 });
@@ -27,89 +71,54 @@ pose.setOptions({
 
 pose.onResults(onResults);
 
-// 2. Variabel Kontrol Logika Push-Up & Counter
-let pushUpCount = 0;
-let posisiState = "UP";       
-let sedangTurun = false;     
-
-// 3. Fungsi Matematika Menghitung Sudut Siku (Bahu - Siku - Pergelangan)
-function hitungSudut(A, B, C) {
-    let radians = Math.atan2(C.y - B.y, C.x - B.x) - Math.atan2(A.y - B.y, A.x - B.x);
-    let angle = Math.abs((radians * 180.0) / Math.PI);
-    if (angle > 180.0) angle = 360.0 - angle;
-    return angle;
-}
-
-// 4. Fungsi Utama Pemrosesan Frame Video (Real-time)
+// =========================================================================
+// 4. FUNGSI UTAMA PEMROSESAN FRAME VIDEO (REAL-TIME DETEKSI)
+// =========================================================================
 function onResults(results) {
-  // Sembunyikan loading screen begitu AI berhasil memproses frame pertama
-  if (!modelSudahSiap) {
-      modelSudahSiap = true;
-      loadingStatus.innerText = "Kamera Siap!";
-      setTimeout(() => {
-          loadingScreen.classList.add('fade-out');
-      }, 500); 
-  }
-
-  // Jika tubuh tidak terdeteksi sama sekali oleh AI
   if (!results.poseLandmarks) {
-      statusCard.className = "card status-invalid";
-      statusIcon.innerHTML = `<i class="fa-solid fa-user-slash"></i>`;
-      statusText.innerHTML = "Tubuh Tidak Terdeteksi";
+      statusWrapper.className = "status-container status-invalid";
+      statusText.innerHTML = "BELUM SIAP"; 
       angleText.innerText = "0°";
+      
+      canvasCtx.save();
+      canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+      canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+      canvasCtx.restore();
       return;
   }
 
   canvasCtx.save();
   canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-  
-  // Gambar video mentah kamera ke latar belakang canvas
   canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 
-  // Gambar Garis Sambungan dan Titik Sendi AI di Layar
-  drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS, {color: '#00FF00', lineWidth: 4});
-  drawLandmarks(canvasCtx, results.poseLandmarks, {color: '#FF0000', lineWidth: 2});
+  // Menggunakan warna cyan (#00bcd4) dan putih agar matching dengan UI
+  drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS, {color: '#00bcd4', lineWidth: 3});
+  drawLandmarks(canvasCtx, results.poseLandmarks, {color: '#ffffff', lineWidth: 1, radius: 4});
 
-  // Mengambil koordinat sendi utama (Menggunakan sisi kiri tubuh)
   const bahu = results.poseLandmarks[11];
   const siku = results.poseLandmarks[13];
   const pergelangan = results.poseLandmarks[15];
   const pinggul = results.poseLandmarks[23];
 
-  // --- FILTER VALIDASI POSISI PUSH-UP KETAT ---
-  // A. Mengukur kesetaraan tinggi Y antara bahu dan pinggul (posisi horizontal/tiarap)
   const selisihY_BahuPinggul = Math.abs(bahu.y - pinggul.y);
-  
-  // B. Memastikan posisi bahu berada di atas pergelangan tangan (posisi menumpu beban)
   const bahuDiatasTangan = pergelangan.y > bahu.y;
-
-  // Toleransi selisih Y maksimal 0.25 untuk mendefinisikan posisi tiarap/plank
   const apakahPosisiPushUp = selisihY_BahuPinggul < 0.25 && bahuDiatasTangan;
 
-  // Jika posisi tubuh salah (misal: pengguna sedang duduk atau berdiri menghadap kamera)
   if (!apakahPosisiPushUp) {
-      statusCard.className = "card status-invalid";
-      statusIcon.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i>`;
-      statusText.innerHTML = "Bukan Posisi Push-Up";
+      statusWrapper.className = "status-container status-warn";
+      statusText.innerHTML = "BELUM SIAP"; 
       angleText.innerText = "0°";
-      
       canvasCtx.restore();
       return; 
   }
 
-  // --- JIKA POSISI TUBUH BENAR, STRATEGI HITUNG PUSH-UP DIMULAI ---
-  statusCard.className = "card status-valid";
-  statusIcon.innerHTML = `<i class="fa-solid fa-circle-check"></i>`;
-  statusText.innerHTML = "Posisi SIAP!";
+  statusWrapper.className = "status-container status-valid";
+  statusText.innerHTML = "SIAP";
 
-  // Hitung sudut lekukan siku saat ini
   const sudutSiku = hitungSudut(bahu, siku, pergelangan);
   angleText.innerText = `${Math.round(sudutSiku)}°`;
 
-  // Logika Evaluasi Gerakan Lengan
   if (sudutSiku > 160) { 
-      
-      // Jika sebelumnya dari bawah dan penurunannya dalam -> HITUNGAN SAH!
       if (posisiState === "DOWN" && sedangTurun === true) {
           pushUpCount++;
           posisiState = "UP";
@@ -117,14 +126,12 @@ function onResults(results) {
           countText.innerText = pushUpCount;
           putarSuara(pushUpCount.toString()); 
       } 
-      // DETEKSI KESALAHAN: Jika tangan kembali lurus padahal turunnya tadi kurang dalam
       else if (posisiState === "DOWN" && sedangTurun === false) {
           putarSuara("Turun kurang dalam");
           posisiState = "UP";
       }
   }
 
-  // Kondisi Badan Turun ke Bawah
   if (sudutSiku < 100) {
       posisiState = "DOWN";
       sedangTurun = true;
@@ -136,20 +143,78 @@ function onResults(results) {
   canvasCtx.restore();
 }
 
-// 5. Fungsi Pemicu Suara Pengingat (Menggunakan Web Speech API Browser)
-function putarSuara(teks) {
-    let speech = new SpeechSynthesisUtterance(teks);
-    speech.lang = 'id-ID'; 
-    speech.rate = 1.1;     
-    window.speechSynthesis.speak(speech);
+// =========================================================================
+// 5. LOGIKA PENYIMPANAN OTOMATIS & POP-UP KALENDER
+// =========================================================================
+function simpanProgressKeLokal() {
+    let riwayatLatihan = JSON.parse(localStorage.getItem('logaz_history')) || {};
+    const tanggalHariIni = getTanggalHariIni();
+
+    if (pushUpCount > 0) {
+        let repsSebelumnya = riwayatLatihan[tanggalHariIni] || 0;
+        riwayatLatihan[tanggalHariIni] = repsSebelumnya + pushUpCount;
+        localStorage.setItem('logaz_history', JSON.stringify(riwayatLatihan));
+        
+        pushUpCount = 0;
+        countText.innerText = pushUpCount;
+    }
 }
 
-// 6. Mengaktifkan dan Mengalirkan Kamera Laptop
+window.addEventListener('beforeunload', function () {
+    simpanProgressKeLokal();
+});
+
+function tampilkanRiwayatKalender() {
+    historyContainer.innerHTML = ''; 
+    let riwayatLatihan = JSON.parse(localStorage.getItem('logaz_history')) || {};
+    const listTanggal = Object.keys(riwayatLatihan).reverse();
+
+    if (listTanggal.length === 0) {
+        historyContainer.innerHTML = `<p style="text-align:center; color:#64748b; font-size:0.9rem; padding: 1.5rem 0;">Belum ada riwayat aktifitas latihan.</p>`;
+        return;
+    }
+
+    listTanggal.forEach(tanggal => {
+        const itemHTML = `
+            <div class="history-item">
+                <div class="history-date"><i class="fa-regular fa-calendar-check"></i> ${tanggal}</div>
+                <div class="history-reps">${riwayatLatihan[tanggal]} Reps</div>
+            </div>
+        `;
+        historyContainer.insertAdjacentHTML('beforeend', itemHTML);
+    });
+}
+
+openHistoryBtn.addEventListener('click', () => {
+    tampilkanRiwayatKalender();
+    historyModal.style.display = 'flex';
+});
+
+closeHistoryBtn.addEventListener('click', () => {
+    historyModal.style.display = 'none';
+});
+
+window.addEventListener('click', (e) => {
+    if (e.target === historyModal) {
+        historyModal.style.display = 'none';
+    }
+});
+
+// =========================================================================
+// 6. MENJALANKAN KAMERA LAPTOP / HP (DENGAN PENANGANAN BUG BLANK)
+// =========================================================================
 const camera = new Camera(videoElement, {
   onFrame: async () => {
-    await pose.send({image: videoElement});
+    // Memastikan frame video terisi sebelum diproses MediaPipe
+    if (videoElement.readyState >= 2) {
+        await pose.send({image: videoElement});
+    }
   },
-  width: 640,
-  height: 480
+  width: window.innerWidth > window.innerHeight ? 640 : 480,
+  height: window.innerWidth > window.innerHeight ? 480 : 640
 });
-camera.start();
+
+camera.start().catch(err => {
+    console.error("Akses kamera ditolak atau gagal:", err);
+    statusText.innerHTML = "ERROR KAMERA";
+});
