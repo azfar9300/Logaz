@@ -22,14 +22,6 @@ let pushUpCount = 0;
 let posisiState = "UP";       
 let sedangTurun = false;     
 
-// Menyesuaikan resolusi kanvas agar responsif full screen
-function sesuaikanUkuranKanvas() {
-    canvasElement.width = window.innerWidth;
-    canvasElement.height = window.innerHeight;
-}
-window.addEventListener('resize', sesuaikanUkuranKanvas);
-sesuaikanUkuranKanvas();
-
 // =========================================================================
 // 2. FUNGSI MATEMATIKA & PEMBANTU (HELPERS)
 // =========================================================================
@@ -75,6 +67,19 @@ pose.onResults(onResults);
 // 4. FUNGSI UTAMA PEMROSESAN FRAME VIDEO (REAL-TIME DETEKSI)
 // =========================================================================
 function onResults(results) {
+  // Proteksi jika frame video belum siap sepenuhnya
+  if (!results.image) return;
+
+  const imgWidth = results.image.width;
+  const imgHeight = results.image.height;
+
+  // Kunci resolusi internal kanvas agar pas 1:1 dengan rasio feed video asli kamera
+  if (canvasElement.width !== imgWidth || canvasElement.height !== imgHeight) {
+      canvasElement.width = imgWidth;
+      canvasElement.height = imgHeight;
+  }
+
+  // JIKA LANDMARKS TIDAK TERDETEKSI
   if (!results.poseLandmarks) {
       statusWrapper.className = "status-container status-invalid";
       statusText.innerHTML = "BELUM SIAP"; 
@@ -87,14 +92,23 @@ function onResults(results) {
       return;
   }
 
+  // JIKA TERDETEKSI, PROSES GAMBAR & HUBUNGKAN SKELETON AI
   canvasCtx.save();
   canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+  
+  // Render gambar kamera full mengikuti resolusi internal
   canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 
-  // Menggunakan warna cyan (#00bcd4) dan putih agar matching dengan UI
-  drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS, {color: '#00bcd4', lineWidth: 3});
-  drawLandmarks(canvasCtx, results.poseLandmarks, {color: '#ffffff', lineWidth: 1, radius: 4});
+  // Menggunakan warna cyan (#00bcd4) dan putih premium agar sinkron dengan UI MOSVAR
+  const koneksiPose = window.POSE_CONNECTIONS || [];
+  drawConnectors(canvasCtx, results.poseLandmarks, koneksiPose, {color: '#00bcd4', lineWidth: 4});
+  drawLandmarks(canvasCtx, results.poseLandmarks, {color: '#ffffff', lineWidth: 1, radius: 5});
+  
+  canvasCtx.restore();
 
+  // -------------------------------------------------------------------------
+  // LOGIKA HITUNGAN PUSH UP
+  // -------------------------------------------------------------------------
   const bahu = results.poseLandmarks[11];
   const siku = results.poseLandmarks[13];
   const pergelangan = results.poseLandmarks[15];
@@ -108,7 +122,6 @@ function onResults(results) {
       statusWrapper.className = "status-container status-warn";
       statusText.innerHTML = "BELUM SIAP"; 
       angleText.innerText = "0°";
-      canvasCtx.restore();
       return; 
   }
 
@@ -139,8 +152,6 @@ function onResults(results) {
       posisiState = "DOWN";
       sedangTurun = false; 
   }
-
-  canvasCtx.restore();
 }
 
 // =========================================================================
@@ -205,7 +216,6 @@ window.addEventListener('click', (e) => {
 // =========================================================================
 const camera = new Camera(videoElement, {
   onFrame: async () => {
-    // Memastikan frame video terisi sebelum diproses MediaPipe
     if (videoElement.readyState >= 2) {
         await pose.send({image: videoElement});
     }
