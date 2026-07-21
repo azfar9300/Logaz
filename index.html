@@ -2,429 +2,129 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>MOSVAR - AI Push-Up Tracker</title>
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>MOSVAR - AI Fitness Tracker</title>
+
     <!-- Library MediaPipe -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
-    
+
     <!-- Google Fonts & FontAwesome Icons -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inconsolata:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <style>
-        :root {
-            /* Warna Gradien Modern & Kaca Premium */
-            --bg-glass: rgba(15, 23, 42, 0.45); /* Gelap transparan tipis */
-            --border-glass: rgba(255, 255, 255, 0.08);
-            --text-light: #ffffff;
-            
-            /* Palet Neon Glow Modern */
-            --primary-glow: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%); /* Cyan ke Biru Elektrik */
-            --success-glow: linear-gradient(135deg, #00ff87 0%, #60efff 100%); /* Hijau Mint ke Cyan */
-            --danger-glow: linear-gradient(135deg, #ff0844 0%, #ffb199 100%);  /* Merah Sunset Menyala */
-            --warn-glow: linear-gradient(135deg, #f6d365 0%, #fda085 100%);    /* Oranye Gold */
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Poppins', sans-serif;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        body, html {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: #111827; /* Dasar gelap pekat supaya gradien menyala */
-            position: relative;
-        }
-
-        /* Container Utama Kamera Full Screen */
-        .camera-wrapper {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            z-index: 1;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background-color: #000;
-        }
-
-        video {
-            display: none !important; /* Menyembunyikan video mentah bawaan browser */
-        }
-
-        canvas {
-        width: 100%;
-        height: 100%;
-        object-fit: contain; /* DIUBAH: Menampilkan seluruh area kamera tanpa terpotong/zoom */
-        transform: scaleX(-1); /* Efek cermin tetap aktif */
-        display: block;
-       }
-
-         .left-controls {
-            position: absolute;
-            top: 0; left: 0;
-            z-index: 10;
-            display: flex;
-            flex-direction: column;
-            gap: 16px; /* Jarak antar tombol diperkecil */
-            background: rgba(20, 20, 20, 0.6);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            padding: 12px 6px 20px 6px; /* Padding dipangkas */
-            border-bottom-right-radius: 25px; /* Lengkungan disesuaikan */
-            border-right: 1px solid var(--border-glass);
-            border-bottom: 1px solid var(--border-glass);
-            align-items: center;
-            box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.3);
-        }
-
-        .btn-action {
-            background: none;
-            border: none;
-            color: var(--text-light);
-            font-size: 1.2rem; /* Ukuran icon dikecilkan */
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            width: 32px; height: 32px; /* Dimensi tombol diperkecil */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-        }
-   
-       .btn-action:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: #00f2fe;
-            transform: scale(1.05);
-        }
-       .btn-action:active { 
-            transform: scale(0.95); 
-        }
-       
-        .status-container {
-            position: absolute;
-            top: 25px; right: 20px;
-            z-index: 10;
-            text-align: right;
-            filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
-        }
-
-        #status-text {
-            font-size: 1.1rem;
-            font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            
-            /* Efek Text Gradient */
-            background: var(--danger-glow);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            
-            transition: all 0.3s ease;
-        }
-
-        /* Perubahan warna gradien dinamis berdasarkan status AI */
-        .status-valid #status-text { 
-            background: var(--success-glow);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .status-invalid #status-text { 
-            background: var(--danger-glow);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .status-warn #status-text { 
-            background: var(--warn-glow);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        /* Teks MOSVAR melayang pas di atas batas panel kanan bawah */
-        .app-name {
-            position: absolute;
-            right: 0;
-            bottom: 30%; /* Sedikit diangkat mengikuti tinggi panel 30% */
-            width: 90px; 
-            font-size: 0.95rem;
-            font-weight: 900;
-            color: var(--text-light);
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            text-align: center;
-            padding-bottom: 8px;
-            z-index: 11;
-            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
-            opacity: 0.9;
-        }
-     
-        .right-panel-bottom {
-            position: absolute;
-            bottom: 0; right: 0;
-            width: 90px; 
-            height: 30%; 
-            background: var(--bg-glass); 
-            backdrop-filter: blur(5px);
-            -webkit-backdrop-filter: blur(16px);
-            z-index: 10;
-            border-left: 1px solid var(--border-glass);
-            border-top: 1px solid rgba(255, 255, 255, 0.15); /* Garis atas lebih terang */
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            justify-content: space-evenly;
-            box-shadow: -8px -8px 32px 0 rgba(0, 0, 0, 0.25);
-            padding: 10px 0;
-        }
-
-        .info-group {
-            width: 100%;
-        }
-
-        .info-label {
-            font-size: 0.75rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 2px;
-            opacity: 0.8;
-        }
-
-        /* Label REPETISI menggunakan warna gradien cyan */
-        .info-group:first-child .info-label {
-            background: var(--primary-glow);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        /* Label SUDUT SIKU tetap putih bersih */
-        #angle-label {
-            color: var(--text-light) !important; 
-        }
-
-        .info-value {
-            font-size: 2.8rem;
-            font-weight: 200;
-            line-height: 1.1;
-            letter-spacing: -1px;
-        }
-
-        /* Nilai Angka REPETISI menggunakan efek gradien menyala */
-        #pushup-count {
-            background: var(--primary-glow);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            display: inline-block;
-        }
-
-        /* Nilai Angka SUDUT SIKU */
-        #angle-text {
-            font-size: 2.4rem;
-            color: var(--text-light);
-            font-weight: 150;
-        }
-
-        /* Style Pop-up Modal Kalender & Prosedur Modern */
-        .modal {
-            display: none; 
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(10, 15, 30, 0.7);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            z-index: 10000;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .modal-content {
-            background: #1e293b; /* Warna tema slate gelap */
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 2rem;
-            border-radius: 28px;
-            max-width: 360px;
-            width: 85%;
-            position: relative;
-            color: #f8fafc;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-        }
-
-        .close-modal {
-            position: absolute;
-            top: 1.25rem; right: 1.5rem;
-            font-size: 1.6rem;
-            cursor: pointer;
-            color: #94a3b8;
-            transition: color 0.2s;
-        }
-        .close-modal:hover { color: #f1f5f9; }
-
-        .modal h2 {
-            font-size: 1.3rem;
-            font-weight: 800;
-            margin-bottom: 0.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
-            background: var(--primary-glow);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .history-list, .instruction-list {
-            max-height: 260px;
-            overflow-y: auto;
-            margin-top: 1rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.08);
-            padding-top: 1rem;
-        }
-
-        /* Gaya Baris Riwayat Latihan */
-        .history-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.75rem 1rem;
-            background: rgba(255, 255, 255, 0.03);
-            margin-bottom: 0.6rem;
-            border-radius: 14px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            font-size: 0.85rem;
-        }
-
-        .history-date {
-            font-weight: 500;
-            color: #cbd5e1;
-        }
-
-        .history-reps {
-            font-weight: 800;
-            color: #ffffff;
-            background: var(--primary-glow);
-            padding: 0.2rem 0.6rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 242, 254, 0.2);
-        }
-
-        /* Gaya Khusus Prosedur Langkah Penggunaan */
-        .step-item {
-            display: flex;
-            gap: 12px;
-            align-items: flex-start;
-            padding: 0.75rem 0.5rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        }
-        .step-item:last-child {
-            border-bottom: none;
-        }
-        .step-number {
-            background: var(--primary-glow);
-            color: #fff;
-            font-weight: 700;
-            width: 24px; height: 24px;
-            min-width: 24px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.8rem;
-        }
-        .step-text {
-            font-size: 0.85rem;
-            color: #cbd5e1;
-            line-height: 1.4;
-        }
-        .step-text strong {
-            color: #fff;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
+<base target="_blank">
 </head>
 <body>
 
-    <div class="camera-wrapper">
-        <video id="webcam" autoplay playsinline></video>
-        <canvas id="output_canvas"></canvas>
-    </div>
-
-    <!-- Panel Tombol Samping (Ditambahkan Tombol Info Prosedur) -->
-    <div class="left-controls">
-        <button class="btn-action" id="open-history-btn" title="Aktifitas Harian">
-            <i class="fa-solid fa-ellipsis-vertical"></i>
-        </button>
-        <button class="btn-action" id="open-info-btn" title="Prosedur Penggunaan">
-            <i class="fa-solid fa-circle-info"></i>
-        </button>
-        <button class="btn-action" onclick="window.location.reload();" title="Reset/Kembali">
-            <i class="fa-solid fa-arrow-rotate-left"></i>
-        </button>
-    </div>
-
-    <div class="status-container" id="status-wrapper">
-        <div id="status-text">BELUM SIAP</div>
-    </div>
-
-    <div class="app-name">MOSVAR</div>
-
-    <div class="right-panel-bottom">
-        <div class="info-group">
-            <div class="info-label">REPETISI</div>
-            <div class="info-value" id="pushup-count">0</div>
-        </div>
-
-        <div class="info-group">
-            <div class="info-label" id="angle-label">SUDUT SIKU</div>
-            <div class="info-value" id="angle-text">0°</div>
+    <!-- ============================================
+         LOADING SCREEN
+    ============================================ -->
+    <div id="loading-screen">
+        <div class="loader-ring"></div>
+        <div class="loader-logo">MOSVAR</div>
+        <div class="loader-sub">AI FITNESS TRACKER v2.0</div>
+        <div class="loader-bar-container">
+            <div class="loader-bar"></div>
         </div>
     </div>
 
-    <!-- MODAL 1: Riwayat Kalender Latihan -->
-    <div class="modal" id="history-modal">
-        <div class="modal-content">
-            <span class="close-modal" id="close-history-btn">&times;</span>
-            <h2><i class="fa-solid fa-calendar-check"></i> Log Aktifitas</h2>
-            <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.5rem;">Total riwayat harian tersimpan otomatis.</p>
-            <div class="history-list" id="history-items-container"></div>
+    <!-- ============================================
+         MAIN MENU SCREEN
+    ============================================ -->
+    <div id="menu-screen">
+        <div class="menu-header">
+            <h1>MOSVAR</h1>
+            <p>AI POWERED FITNESS TRACKER</p>
+        </div>
+
+        <div class="menu-grid">
+            <div class="menu-card pushup" data-mode="pushup">
+                <div class="menu-card-title">PUSH UP</div>
+                <div class="menu-card-desc">Dada & Lengan</div>
+            </div>
+            <div class="menu-card pullup" data-mode="pullup">
+                <div class="menu-card-title">PULL UP</div>
+                <div class="menu-card-desc">Punggung & Biceps</div>
+            </div>
+            <div class="menu-card situp" data-mode="situp">
+                <div class="menu-card-title">SIT UP</div>
+                <div class="menu-card-desc">Perut & Core</div>
+            </div>
+            <div class="menu-card squat" data-mode="squat">
+                <div class="menu-card-title">SQUAT</div>
+                <div class="menu-card-desc">Kaki & Glutes</div>
+            </div>
+            <div class="menu-card plank" data-mode="plank">
+                <div class="menu-card-title">PLANK</div>
+                <div class="menu-card-desc">Core Stability</div>
+            </div>
+            <div class="menu-card jumpingjack" data-mode="jumpingjack">
+                <div class="menu-card-title">JUMPING JACK</div>
+                <div class="menu-card-desc">Kardio & Full Body</div>
+            </div>
+        </div>
+
+        <div class="menu-history-section">
+            <div class="menu-history-header">
+                <i class="fa-solid fa-chart-simple"></i>
+                <span>Log Aktifitas</span>
+            </div>
+            <div class="menu-history-list" id="menu-history-list">
+                <!-- Diisi oleh JS -->
+            </div>
+        </div>
+
+        <div class="menu-footer">
+            <p>Pilih mode latihan untuk memulai</p>
         </div>
     </div>
 
-    <!-- MODAL 2: Prosedur Penggunaan Aplikasi (BARU) -->
-    <div class="modal" id="info-modal">
-        <div class="modal-content">
-            <span class="close-modal" id="close-info-btn">&times;</span>
-            <h2><i class="fa-solid fa-circle-info"></i> Panduan MOSVAR</h2>
-            <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.5rem;">Ikuti prosedur untuk akurasi sensor AI:</p>
-            
-            <div class="instruction-list">
-                <div class="step-item">
-                    <div class="step-number">1</div>
-                    <div class="step-text">Letakkan perangkat smartphone/laptop di lantai dengan posisi **miring menghadap tubuh samping** kamu.</div>
-                </div>
-                <div class="step-item">
-                    <div class="step-number">2</div>
-                    <div class="step-text">Mundurlah hingga **seluruh bagian tubuh** (dari kepala, bahu, siku, pinggul, sampai kaki) masuk ke dalam frame kamera.</div>
-                </div>
-                <div class="step-item">
-                    <div class="step-number">3</div>
-                    <div class="step-text">Masuk ke posisi *Plank/Push-Up*. Jika posisi tubuh sudah pas, status kanan atas akan berubah menjadi **SIAP (Hijau)**.</div>
-                </div>
-                <div class="step-item">
-                    <div class="step-number">4</div>
-                    <div class="step-text">Lakukan gerakan turun (*Down*) hingga sudut siku **di bawah 100°**, lalu dorong naik (*Up*) sampai tangan lurus **di atas 160°** untuk dihitung 1 repetisi.</div>
-                </div>
+    <!-- ============================================
+         WORKOUT / CAMERA SCREEN
+    ============================================ -->
+    <div id="workout-screen">
+        <div class="camera-wrapper">
+            <video id="webcam" autoplay playsinline style="display:none;"></video>
+            <canvas id="output_canvas"></canvas>
+        </div>
+
+        <div class="left-controls">
+            <button class="btn-action" id="back-to-menu-btn" title="Kembali ke Menu">
+                <i class="fa-solid fa-arrow-left"></i>
+            </button>
+        </div>
+
+        <div class="mode-badge" id="mode-badge">PUSH UP</div>
+
+        <div class="status-container" id="status-wrapper">
+            <div id="status-text">BELUM SIAP</div>
+        </div>
+
+        <div class="app-name">MOSVAR</div>
+
+        <div class="right-panel-bottom">
+            <!-- Panel Repetisi (untuk mode biasa) -->
+            <div class="info-group" id="reps-group">
+                <div class="info-label">REPETISI</div>
+                <div class="info-value" id="pushup-count">0</div>
+            </div>
+            <!-- Panel Timer (khusus plank, hidden by default) -->
+            <div class="info-group hidden" id="timer-group">
+                <div class="info-label">WAKTU</div>
+                <div class="info-value" id="plank-timer">00:00</div>
+            </div>
+            <div class="info-group">
+                <div class="info-label" id="angle-label">SUDUT SIKU</div>
+                <div class="info-value" id="angle-text">0°</div>
             </div>
         </div>
     </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
 
     <script src="app.js"></script>
 </body>

@@ -1,0 +1,776 @@
+/* ============================================
+   MOSVAR AI FITNESS TRACKER v2.0
+   style.css - Neon Green / Cyan Theme
+   ============================================ */
+
+:root {
+    --bg-color: #020a02;
+    --card-bg: rgba(255, 255, 255, 0.04);
+    --primary-neon: #00ff88;
+    --cyan-neon: #0bfbff;
+    --text-white: #e0ffe0;
+    --text-muted: #889990;
+    --btn-gray: #122116;
+    --font-head: 'Orbitron', sans-serif;
+    --font-code: 'Inconsolata', monospace;
+    --font-body: 'Plus Jakarta Sans', sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-body);
+    -webkit-tap-highlight-color: transparent;
+}
+
+body, html {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: var(--bg-color);
+    position: relative;
+}
+
+/* Utility */
+.hidden { display: none !important; }
+
+/* ============================================
+   1. LOADING SCREEN
+   ============================================ */
+#loading-screen {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: var(--bg-color);
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.8s;
+}
+
+#loading-screen.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.loader-ring {
+    width: 80px;
+    height: 80px;
+    border: 3px solid rgba(0, 255, 136, 0.1);
+    border-top: 3px solid var(--primary-neon);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 24px;
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loader-logo {
+    font-family: var(--font-head);
+    font-size: 2rem;
+    font-weight: 900;
+    color: var(--primary-neon);
+    letter-spacing: 6px;
+    text-shadow: 0 0 30px rgba(0, 255, 136, 0.5), 0 0 60px rgba(0, 255, 136, 0.2);
+    margin-bottom: 8px;
+}
+
+.loader-sub {
+    font-family: var(--font-code);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+}
+
+.loader-bar-container {
+    width: 200px;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 2px;
+    margin-top: 32px;
+    overflow: hidden;
+}
+
+.loader-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--primary-neon), var(--cyan-neon));
+    border-radius: 2px;
+    animation: loadProgress 2.5s ease-in-out forwards;
+    box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+}
+
+@keyframes loadProgress {
+    0% { width: 0%; }
+    50% { width: 60%; }
+    100% { width: 100%; }
+}
+
+/* ============================================
+   2. MAIN MENU SCREEN
+   ============================================ */
+#menu-screen {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: var(--bg-color);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+#menu-screen.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: scale(0.95);
+}
+
+.menu-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.menu-header h1 {
+    font-family: var(--font-head);
+    font-size: 2.8rem;
+    font-weight: 900;
+    color: white;
+    letter-spacing: 8px;
+    text-shadow: 0 0 40px rgba(0, 255, 136, 0.4), 0 0 80px rgba(0, 255, 136, 0.1);
+    margin-bottom: 8px;
+}
+
+.menu-header p {
+    font-family: var(--font-code);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    letter-spacing: 3px;
+}
+
+.menu-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    width: 100%;
+    max-width: 400px;
+}
+
+.menu-card {
+    background: var(--card-bg);
+    border: 1px solid rgba(0, 255, 136, 0.08);
+    padding: 28px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.menu-card.pushup { border-radius: 0px 25px; }
+.menu-card.pullup { border-radius: 25px 0px; }
+.menu-card.situp { border-radius: 25px 0px 0px 25px; }
+.menu-card.squat { border-radius: 0px 25px 25px 0px; }
+.menu-card.plank { border-radius: 25px 0px; }
+.menu-card.jumpingjack { border-radius: 0px 25px; }
+
+.menu-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: linear-gradient(135deg, rgba(0, 255, 136, 0.05), transparent);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+
+.menu-card:hover::before,
+.menu-card:active::before {
+    opacity: 1;
+}
+
+.menu-card:hover {
+    border-color: rgba(0, 255, 136, 0.3);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 32px rgba(0, 255, 136, 0.1);
+}
+
+.menu-card:active {
+    transform: scale(0.96);
+}
+
+.menu-card-title {
+    font-family: var(--font-head);
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text-white);
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+}
+
+.menu-card-desc {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    font-family: var(--font-code);
+}
+
+/* ============================================
+   3. MENU HISTORY SECTION
+   ============================================ */
+.menu-history-section {
+    width: 100%;
+    max-width: 400px;
+    margin-top: 20px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(0, 255, 136, 0.08);
+    border-radius: 20px;
+    padding: 16px;
+    max-height: 180px;
+    display: flex;
+    flex-direction: column;
+}
+
+.menu-history-header {
+    font-family: var(--font-head);
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--primary-neon);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(0, 255, 136, 0.1);
+}
+
+.menu-history-list {
+    overflow-y: auto;
+    flex: 1;
+}
+
+.menu-history-list::-webkit-scrollbar {
+    width: 3px;
+}
+
+.menu-history-list::-webkit-scrollbar-thumb {
+    background: rgba(0, 255, 136, 0.3);
+    border-radius: 4px;
+}
+
+.history-empty {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-family: var(--font-code);
+    padding: 1rem 0;
+}
+
+.history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.6rem 0.8rem;
+    background: rgba(255, 255, 255, 0.02);
+    margin-bottom: 0.4rem;
+    border-radius: 10px;
+    border: 1px solid rgba(0, 255, 136, 0.05);
+    font-size: 0.8rem;
+    transition: all 0.2s ease;
+}
+
+.history-item:hover {
+    background: rgba(0, 255, 136, 0.05);
+    border-color: rgba(0, 255, 136, 0.15);
+}
+
+.history-date {
+    font-weight: 500;
+    color: var(--text-muted);
+    font-family: var(--font-code);
+    font-size: 0.75rem;
+}
+
+.history-reps {
+    font-family: var(--font-head);
+    font-weight: 800;
+    color: var(--bg-color);
+    background: var(--primary-neon);
+    padding: 0.2rem 0.6rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 255, 136, 0.3);
+    font-size: 0.75rem;
+}
+
+.menu-footer {
+    margin-top: 32px;
+    text-align: center;
+}
+
+.menu-footer p {
+    font-family: var(--font-code);
+    font-size: 0.7rem;
+    color: rgba(136, 153, 144, 0.5);
+    letter-spacing: 1px;
+}
+
+/* ============================================
+   4. WORKOUT / CAMERA SCREEN
+   ============================================ */
+#workout-screen {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 1;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.5s ease, visibility 0.5s ease;
+}
+
+#workout-screen.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.camera-wrapper {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 1;
+}
+
+video, canvas {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+    display: block;
+}
+
+/* Left Controls */
+.left-controls {
+    position: absolute;
+    top: 0; left: 0;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: rgba(2, 10, 2, 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    padding: 12px 5px 12px 5px;
+    border-bottom-right-radius: 24px;
+    border-right: 1px solid rgba(0, 255, 136, 0.1);
+    border-bottom: 1px solid rgba(0, 255, 136, 0.1);
+    align-items: center;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+    pointer-events: auto;
+}
+
+.btn-action {
+    background: none;
+    border: none;
+    color: var(--text-white);
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 44px; height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    position: relative;
+    z-index: 20;
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+    user-select: none;
+}
+
+.btn-action:hover {
+    background: rgba(0, 255, 136, 0.1);
+    color: var(--primary-neon);
+    transform: scale(1.08);
+}
+
+.btn-action:active {
+    transform: scale(0.92);
+}
+
+/* Status Container */
+.status-container {
+    position: absolute;
+    top: 20px; right: 16px;
+    z-index: 10;
+    text-align: right;
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.6));
+}
+
+#status-text {
+    font-family: var(--font-head);
+    font-size: 1rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    transition: all 0.3s ease;
+}
+
+.status-valid #status-text {
+    color: var(--primary-neon);
+    text-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+}
+
+.status-invalid #status-text {
+    color: #ff4444;
+    text-shadow: 0 0 20px rgba(255, 68, 68, 0.4);
+}
+
+.status-warn #status-text {
+    color: #ffaa00;
+    text-shadow: 0 0 20px rgba(255, 170, 0, 0.4);
+}
+
+/* Workout Mode Badge */
+.mode-badge {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    background: rgba(0, 255, 136, 0.1);
+    border: 1px solid rgba(0, 255, 136, 0.2);
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-family: var(--font-head);
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--primary-neon);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    backdrop-filter: blur(8px);
+}
+
+/* App Name */
+.app-name {
+    position: absolute;
+    right: 0;
+    bottom: 30%;
+    width: 90px;
+    font-family: var(--font-head);
+    font-size: 0.85rem;
+    font-weight: 900;
+    color: var(--text-white);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    text-align: center;
+    padding-bottom: 8px;
+    z-index: 11;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.7);
+    opacity: 0.8;
+    margin: 0px 7px 10px;
+}
+
+/* Right Panel */
+.right-panel-bottom {
+    position: absolute;
+    bottom: 0; right: 0;
+    width: 90px;
+    height: 30%;
+    background: rgba(2, 10, 2, 0.6);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    z-index: 10;
+    border-left: 1px solid rgba(0, 255, 136, 0.08);
+    border-top: 1px solid rgba(0, 255, 136, 0.15);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    box-shadow: -8px -8px 32px 0 rgba(0, 0, 0, 0.3);
+    border-radius: 25px 0px 0px;
+}
+
+.info-group {
+    width: 100%;
+    margin: 20px;
+    padding: 0px 10px;
+    margin-bottom: 5px;
+}
+
+.info-label {
+    font-family: var(--font-head);
+    font-size: 1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+    color: var(--text-muted);
+    margin-bottom: 15px;
+}
+
+.info-group:first-child .info-label,
+#timer-group .info-label {
+    color: var(--primary-neon);
+}
+
+.info-value {
+    font-family: var(--font-head);
+    font-size: 2.6rem;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -1px;
+}
+
+#pushup-count {
+    color: var(--primary-neon);
+    text-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+}
+
+#plank-timer {
+    color: var(--cyan-neon);
+    text-shadow: 0 0 20px rgba(11, 251, 255, 0.4);
+    font-size: 1.4rem;
+}
+
+#angle-label {
+    color: var(--cyan-neon);
+}
+
+#angle-text {
+    font-size: 2.2rem;
+    color: var(--cyan-neon);
+    font-weight: 700;
+    text-shadow: 0 0 15px rgba(11, 251, 255, 0.3);
+}
+
+/* ============================================
+   5. TOAST NOTIFICATION
+   ============================================ */
+.toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: rgba(18, 33, 22, 0.95);
+    border: 1px solid rgba(0, 255, 136, 0.2);
+    color: var(--primary-neon);
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-family: var(--font-head);
+    font-size: 0.85rem;
+    font-weight: 700;
+    z-index: 99999;
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 20px rgba(0, 255, 136, 0.1);
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* ============================================
+   6. RESPONSIVE MOBILE (< 480px)
+   ============================================ */
+@media (max-width: 480px) {
+    .menu-header h1 {
+        font-size: 2rem;
+        letter-spacing: 4px;
+    }
+
+    .menu-header p {
+        font-size: 0.7rem;
+    }
+
+    .menu-grid {
+        gap: 10px;
+        max-width: 100%;
+        padding: 0 10px;
+    }
+
+    .menu-card {
+        padding: 20px 10px;
+    }
+
+    .menu-card-title {
+        font-size: 0.75rem;
+    }
+
+    .menu-card-desc {
+        font-size: 0.58rem;
+    }
+
+    .menu-history-section {
+        margin-top: 12px;
+        max-height: 140px;
+        padding: 12px;
+    }
+
+    .menu-history-header {
+        font-size: 0.65rem;
+        margin-bottom: 8px;
+    }
+
+    .history-item {
+        padding: 0.5rem 0.6rem;
+        font-size: 0.75rem;
+    }
+
+    .history-reps {
+        font-size: 0.7rem;
+        padding: 0.15rem 0.5rem;
+    }
+
+    .loader-ring {
+        width: 60px;
+        height: 60px;
+    }
+
+    .loader-logo {
+        font-size: 1.5rem;
+    }
+
+    .loader-bar-container {
+        width: 160px;
+    }
+
+    .right-panel-bottom {
+        width: 70px;
+    }
+
+    .app-name {
+        width: 70px;
+        font-size: 0.7rem;
+        bottom: 28%;
+    }
+
+    .info-value {
+        font-size: 2rem;
+    }
+
+    #plank-timer {
+        font-size: 1rem;
+    }
+
+    #angle-text {
+        font-size: 1.6rem;
+    }
+
+    .info-label {
+        font-size: 0.5rem;
+    }
+
+    .status-container {
+        top: 16px;
+        right: 10px;
+    }
+
+    #status-text {
+        font-size: 0.85rem;
+    }
+
+    .mode-badge {
+        font-size: 0.6rem;
+        padding: 4px 12px;
+    }
+
+    .left-controls {
+        padding: 8px 4px 12px 4px;
+        gap: 8px;
+        border-bottom-right-radius: 18px;
+    }
+
+    .btn-action {
+        width: 32px;
+        height: 32px;
+        font-size: 1rem;
+    }
+
+    .toast {
+        font-size: 0.75rem;
+        padding: 10px 18px;
+    }
+}
+
+/* ============================================
+   7. RESPONSIVE TABLET (481px - 768px)
+   ============================================ */
+@media (min-width: 481px) and (max-width: 768px) {
+    .menu-grid {
+        max-width: 500px;
+    }
+
+    .menu-card {
+        padding: 24px 14px;
+    }
+}
+
+/* ============================================
+   8. NOTCH / SAFE AREA SUPPORT
+   ============================================ */
+@supports (padding-top: env(safe-area-inset-top)) {
+    .left-controls {
+        padding-top: calc(12px + env(safe-area-inset-top));
+    }
+
+    .status-container {
+        top: calc(20px + env(safe-area-inset-top));
+    }
+
+    .mode-badge {
+        top: calc(20px + env(safe-area-inset-top));
+    }
+
+    .menu-header {
+        margin-top: env(safe-area-inset-top);
+    }
+}
+
+/* ============================================
+   9. ORIENTATION LANDSCAPE DI HP
+   ============================================ */
+@media (max-width: 768px) and (orientation: landscape) {
+    .menu-header {
+        margin-bottom: 20px;
+    }
+
+    .menu-header h1 {
+        font-size: 1.8rem;
+    }
+
+    .menu-grid {
+        grid-template-columns: repeat(3, 1fr);
+        max-width: 600px;
+    }
+
+    .menu-card {
+        padding: 16px 10px;
+    }
+
+    .menu-footer {
+        margin-top: 16px;
+    }
+
+    .right-panel-bottom {
+        width: 80px;
+        height: 35%;
+    }
+
+    .app-name {
+        bottom: 35%;
+    }
+}
