@@ -279,40 +279,18 @@ function onResults(results) {
 
     const imgWidth = results.image.width;
     const imgHeight = results.image.height;
-    const screenW = window.innerWidth;
-    const screenH = window.innerHeight;
 
-    // Fix: canvas internal = screen size (biar tidak ngezoom)
-    // tapi render video dengan cover logic manual
-    if (canvasElement.width !== screenW || canvasElement.height !== screenH) {
-        canvasElement.width = screenW;
-        canvasElement.height = screenH;
+    // Canvas internal = video size (biar tidak stretch/ngezoom)
+    if (canvasElement.width !== imgWidth || canvasElement.height !== imgHeight) {
+        canvasElement.width = imgWidth;
+        canvasElement.height = imgHeight;
     }
 
     canvasCtx.save();
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-    // Hitung cover scaling: video memenuhi screen tanpa distortion
-    const imgRatio = imgWidth / imgHeight;
-    const screenRatio = screenW / screenH;
-    let drawW, drawH, offsetX, offsetY;
-
-    if (imgRatio > screenRatio) {
-        // Video lebih lebar → scale by height, crop sides
-        drawH = screenH;
-        drawW = drawH * imgRatio;
-        offsetX = (screenW - drawW) / 2;
-        offsetY = 0;
-    } else {
-        // Video lebih tinggi → scale by width, crop top/bottom
-        drawW = screenW;
-        drawH = drawW / imgRatio;
-        offsetX = 0;
-        offsetY = (screenH - drawH) / 2;
-    }
-
-    // Draw video frame dengan cover scaling
-    canvasCtx.drawImage(results.image, offsetX, offsetY, drawW, drawH);
+    // Draw video frame as-is (1:1 pixel)
+    canvasCtx.drawImage(results.image, 0, 0, imgWidth, imgHeight);
 
     if (!results.poseLandmarks) {
         statusWrapper.className = "status-container status-invalid";
