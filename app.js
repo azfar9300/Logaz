@@ -279,19 +279,40 @@ function onResults(results) {
 
     const imgWidth = results.image.width;
     const imgHeight = results.image.height;
+    const screenW = window.innerWidth;
+    const screenH = window.innerHeight;
 
-    // Fix: set canvas internal resolution = video resolution
-    // tapi CSS yang kontrol tampilan di layar
-    if (canvasElement.width !== imgWidth || canvasElement.height !== imgHeight) {
-        canvasElement.width = imgWidth;
-        canvasElement.height = imgHeight;
+    // Fix: canvas internal = screen size (biar tidak ngezoom)
+    // tapi render video dengan cover logic manual
+    if (canvasElement.width !== screenW || canvasElement.height !== screenH) {
+        canvasElement.width = screenW;
+        canvasElement.height = screenH;
     }
 
     canvasCtx.save();
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-    // Draw video frame full resolution ke canvas
-    canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+    // Hitung cover scaling: video memenuhi screen tanpa distortion
+    const imgRatio = imgWidth / imgHeight;
+    const screenRatio = screenW / screenH;
+    let drawW, drawH, offsetX, offsetY;
+
+    if (imgRatio > screenRatio) {
+        // Video lebih lebar → scale by height, crop sides
+        drawH = screenH;
+        drawW = drawH * imgRatio;
+        offsetX = (screenW - drawW) / 2;
+        offsetY = 0;
+    } else {
+        // Video lebih tinggi → scale by width, crop top/bottom
+        drawW = screenW;
+        drawH = drawW / imgRatio;
+        offsetX = 0;
+        offsetY = (screenH - drawH) / 2;
+    }
+
+    // Draw video frame dengan cover scaling
+    canvasCtx.drawImage(results.image, offsetX, offsetY, drawW, drawH);
 
     if (!results.poseLandmarks) {
         statusWrapper.className = "status-container status-invalid";
