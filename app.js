@@ -280,6 +280,8 @@ function onResults(results) {
     const imgWidth = results.image.width;
     const imgHeight = results.image.height;
 
+    // Fix: set canvas internal resolution = video resolution
+    // tapi CSS yang kontrol tampilan di layar
     if (canvasElement.width !== imgWidth || canvasElement.height !== imgHeight) {
         canvasElement.width = imgWidth;
         canvasElement.height = imgHeight;
@@ -287,6 +289,8 @@ function onResults(results) {
 
     canvasCtx.save();
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+    // Draw video frame full resolution ke canvas
     canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 
     if (!results.poseLandmarks) {
@@ -377,14 +381,17 @@ function onResults(results) {
 // KAMERA
 // =========================================================================
 function startCamera() {
+    const isPortrait = window.innerHeight > window.innerWidth;
+
     cameraInstance = new Camera(videoElement, {
         onFrame: async () => {
             if (videoElement.readyState >= 2) {
                 await pose.send({ image: videoElement });
             }
         },
-        width: window.innerWidth > window.innerHeight ? 640 : 480,
-        height: window.innerWidth > window.innerHeight ? 480 : 640
+        // Kunci aspect ratio sesuai orientasi HP
+        width: isPortrait ? 480 : 640,
+        height: isPortrait ? 640 : 480
     });
 
     cameraInstance.start().catch(err => {
