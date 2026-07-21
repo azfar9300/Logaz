@@ -1,5 +1,5 @@
 /* ============================================
-   MOSVAR AI FITNESS TRACKER v2.0
+   MOSVAR AI FITNESS TRACKER v2.0 - FIXED ZOOM v2
    style.css - Neon Green / Cyan Theme
    ============================================ */
 
@@ -328,7 +328,7 @@ body, html {
 }
 
 /* ============================================
-   4. WORKOUT / CAMERA SCREEN
+   4. WORKOUT / CAMERA SCREEN - FIXED ZOOM v2
    ============================================ */
 #workout-screen {
     position: absolute;
@@ -345,7 +345,7 @@ body, html {
     visibility: visible;
 }
 
-/* Camera wrapper - FIX: full screen */
+/* Camera wrapper - FIX: full screen tanpa black bars */
 .camera-wrapper {
     position: absolute;
     top: 0; left: 0;
@@ -355,19 +355,21 @@ body, html {
     background: #000;
 }
 
-/* Video hidden */
+/* Video hidden - kita render ke canvas */
 video {
-    display: none;
+    display: none !important;
+    width: 0;
+    height: 0;
 }
 
 /* ============================================
-   CANVAS - FIX: JS handle mirror & scaling
+   CANVAS - FIXED v2: Full cover + zoom out via JS
    ============================================ */
 canvas {
     width: 100%;
     height: 100%;
     display: block;
-    /* Mirror & cover scaling di-handle oleh JS */
+    object-fit: cover;
 }
 
 /* Left Controls */

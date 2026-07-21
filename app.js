@@ -1,6 +1,6 @@
 // =========================================================================
-// MOSVAR AI FITNESS TRACKER v2.0
-// app.js - Multi-Mode AI Pose Detection
+// MOSVAR AI FITNESS TRACKER v2.0 - FIXED ZOOM v2
+// app.js - Multi-Mode AI Pose Detection with Wide Field of View
 // =========================================================================
 
 // --- Elemen UI ---
@@ -42,6 +42,11 @@ let plankTimerInterval = null;
 let plankElapsedSeconds = 0;
 let isPlankActive = false;
 let plankStartTime = null;
+
+// --- ZOOM OUT CONFIG ---
+// Nilai ini mengontrol seberapa "jauh" kamera terlihat
+// 1.0 = normal, 0.7 = zoom out 30%, 0.5 = zoom out 50%
+const ZOOM_OUT_FACTOR = 0.99; // 72% = zoom out 28%, cukup untuk lihat seluruh tubuh
 
 // =========================================================================
 // KONFIGURASI MODE LATIHAN
@@ -282,7 +287,7 @@ function onResults(results) {
     const screenW = window.innerWidth;
     const screenH = window.innerHeight;
 
-    // Canvas internal = screen size (penting!)
+    // Canvas internal = screen size
     if (canvasElement.width !== screenW || canvasElement.height !== screenH) {
         canvasElement.width = screenW;
         canvasElement.height = screenH;
@@ -291,29 +296,44 @@ function onResults(results) {
     canvasCtx.save();
     canvasCtx.clearRect(0, 0, screenW, screenH);
 
-    // Cover scaling manual: video memenuhi screen tanpa distortion
+    // ============================================
+    // FIX ZOOM v2: Cover scaling + Digital Zoom Out
+    // Tujuannya: layar penuh (tidak ada hitam) + seluruh tubuh terlihat
+    // ============================================
+
+    // Step 1: Hitung cover scaling (video memenuhi layar)
     const imgRatio = imgWidth / imgHeight;
     const screenRatio = screenW / screenH;
-    let drawW, drawH, offsetX, offsetY;
+    let coverW, coverH, coverOffsetX, coverOffsetY;
 
     if (imgRatio > screenRatio) {
-        // Video lebih lebar → scale by height, crop sisi
-        drawH = screenH;
-        drawW = drawH * imgRatio;
-        offsetX = (screenW - drawW) / 2;
-        offsetY = 0;
+        // Video lebih wide → scale by height
+        coverH = screenH;
+        coverW = coverH * imgRatio;
+        coverOffsetX = (screenW - coverW) / 2;
+        coverOffsetY = 0;
     } else {
-        // Video lebih tinggi → scale by width, crop atas/bawah
-        drawW = screenW;
-        drawH = drawW / imgRatio;
-        offsetX = 0;
-        offsetY = (screenH - drawH) / 2;
+        // Video lebih tall → scale by width
+        coverW = screenW;
+        coverH = coverW / imgRatio;
+        coverOffsetX = 0;
+        coverOffsetY = (screenH - coverH) / 2;
     }
 
-    // Draw video frame dengan cover scaling + mirror
+    // Step 2: Apply ZOOM OUT factor
+    // Kita gambar video lebih BESAR dari cover size, sehingga area yang terlihat
+    // di canvas adalah bagian tengah yang lebih "jauh"
+    const zoomedW = coverW / ZOOM_OUT_FACTOR;
+    const zoomedH = coverH / ZOOM_OUT_FACTOR;
+    const zoomedOffsetX = coverOffsetX - (zoomedW - coverW) / 2;
+    const zoomedOffsetY = coverOffsetY - (zoomedH - coverH) / 2;
+
+    // Mirror: flip horizontal
     canvasCtx.translate(screenW, 0);
     canvasCtx.scale(-1, 1);
-    canvasCtx.drawImage(results.image, offsetX, offsetY, drawW, drawH);
+
+    // Draw video frame dengan zoom out
+    canvasCtx.drawImage(results.image, zoomedOffsetX, zoomedOffsetY, zoomedW, zoomedH);
 
     if (!results.poseLandmarks) {
         statusWrapper.className = "status-container status-invalid";
@@ -326,12 +346,28 @@ function onResults(results) {
         return;
     }
 
+    // ============================================
+    // FIX ZOOM v2: Remap landmarks dengan zoom out factor
+    // ============================================
+    // Scale factor dari video original ke canvas (dengan zoom out)
+    const scaleX = zoomedW / imgWidth;
+    const scaleY = zoomedH / imgHeight;
+
+    // Transformasi landmarks ke canvas coordinates (dengan mirror)
+    const transformedLandmarks = results.poseLandmarks.map(lm => ({
+        x: (lm.x * imgWidth * scaleX + zoomedOffsetX),
+        y: (lm.y * imgHeight * scaleY + zoomedOffsetY),
+        z: lm.z,
+        visibility: lm.visibility
+    }));
+
+    // Gambar connectors dan landmarks
     const koneksiPose = window.POSE_CONNECTIONS || [];
-    drawConnectors(canvasCtx, results.poseLandmarks, koneksiPose, {
+    drawConnectors(canvasCtx, transformedLandmarks, koneksiPose, {
         color: 'rgba(0, 255, 136, 0.6)',
         lineWidth: 3
     });
-    drawLandmarks(canvasCtx, results.poseLandmarks, {
+    drawLandmarks(canvasCtx, transformedLandmarks, {
         color: '#0bfbff',
         lineWidth: 1,
         radius: 4
@@ -400,10 +436,15 @@ function onResults(results) {
 }
 
 // =========================================================================
-// KAMERA
+// KAMERA - FIXED RESOLUTION
 // =========================================================================
 function startCamera() {
     const isPortrait = window.innerHeight > window.innerWidth;
+
+    // Resolusi tinggi untuk kualitas lebih baik
+    // Tapi tetap dalam batas yang bisa di-handle HP
+    const targetWidth = isPortrait ? 720 : 1280;
+    const targetHeight = isPortrait ? 1280 : 720;
 
     cameraInstance = new Camera(videoElement, {
         onFrame: async () => {
@@ -411,9 +452,8 @@ function startCamera() {
                 await pose.send({ image: videoElement });
             }
         },
-        // Kunci aspect ratio sesuai orientasi HP
-        width: isPortrait ? 480 : 640,
-        height: isPortrait ? 640 : 480
+        width: targetWidth,
+        height: targetHeight
     });
 
     cameraInstance.start().catch(err => {
