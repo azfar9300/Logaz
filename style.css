@@ -361,20 +361,13 @@ video {
 }
 
 /* ============================================
-   CANVAS - FIX ZOOM: 
-   Canvas internal size = video size (via JS)
-   CSS display size = 100% viewport dengan cover effect
+   CANVAS - FIX: JS handle mirror & scaling
    ============================================ */
 canvas {
-    /* Display size: fill wrapper */
     width: 100%;
     height: 100%;
-    /* Mirror */
-    transform: scaleX(-1);
-    /* Cover: crop yang overflow, tidak stretch */
-    object-fit: cover;
-    object-position: center;
     display: block;
+    /* Mirror & cover scaling di-handle oleh JS */
 }
 
 /* Left Controls */

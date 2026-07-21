@@ -279,18 +279,41 @@ function onResults(results) {
 
     const imgWidth = results.image.width;
     const imgHeight = results.image.height;
+    const screenW = window.innerWidth;
+    const screenH = window.innerHeight;
 
-    // Canvas internal = video size (biar tidak stretch/ngezoom)
-    if (canvasElement.width !== imgWidth || canvasElement.height !== imgHeight) {
-        canvasElement.width = imgWidth;
-        canvasElement.height = imgHeight;
+    // Canvas internal = screen size (penting!)
+    if (canvasElement.width !== screenW || canvasElement.height !== screenH) {
+        canvasElement.width = screenW;
+        canvasElement.height = screenH;
     }
 
     canvasCtx.save();
-    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+    canvasCtx.clearRect(0, 0, screenW, screenH);
 
-    // Draw video frame as-is (1:1 pixel)
-    canvasCtx.drawImage(results.image, 0, 0, imgWidth, imgHeight);
+    // Cover scaling manual: video memenuhi screen tanpa distortion
+    const imgRatio = imgWidth / imgHeight;
+    const screenRatio = screenW / screenH;
+    let drawW, drawH, offsetX, offsetY;
+
+    if (imgRatio > screenRatio) {
+        // Video lebih lebar → scale by height, crop sisi
+        drawH = screenH;
+        drawW = drawH * imgRatio;
+        offsetX = (screenW - drawW) / 2;
+        offsetY = 0;
+    } else {
+        // Video lebih tinggi → scale by width, crop atas/bawah
+        drawW = screenW;
+        drawH = drawW / imgRatio;
+        offsetX = 0;
+        offsetY = (screenH - drawH) / 2;
+    }
+
+    // Draw video frame dengan cover scaling + mirror
+    canvasCtx.translate(screenW, 0);
+    canvasCtx.scale(-1, 1);
+    canvasCtx.drawImage(results.image, offsetX, offsetY, drawW, drawH);
 
     if (!results.poseLandmarks) {
         statusWrapper.className = "status-container status-invalid";
