@@ -43,6 +43,14 @@ let plankElapsedSeconds = 0;
 let isPlankActive = false;
 let plankStartTime = null;
 
+// --- Variabel Canvas Scaling ---
+let canvasScaleX = 1;
+let canvasScaleY = 1;
+let canvasOffsetX = 0;
+let canvasOffsetY = 0;
+let videoFrameWidth = 0;
+let videoFrameHeight = 0;
+
 // =========================================================================
 // KONFIGURASI MODE LATIHAN
 // =========================================================================
@@ -282,7 +290,11 @@ function onResults(results) {
     const screenW = window.innerWidth;
     const screenH = window.innerHeight;
 
-    // Canvas internal = screen size (penting!)
+    // Simpan dimensi frame video asli
+    videoFrameWidth = imgWidth;
+    videoFrameHeight = imgHeight;
+
+    // Canvas internal = screen size
     if (canvasElement.width !== screenW || canvasElement.height !== screenH) {
         canvasElement.width = screenW;
         canvasElement.height = screenH;
@@ -291,29 +303,47 @@ function onResults(results) {
     canvasCtx.save();
     canvasCtx.clearRect(0, 0, screenW, screenH);
 
-    // Cover scaling manual: video memenuhi screen tanpa distortion
+    // =====================================================================
+    // FIX: CONTAIN SCALING (fit seluruh frame, letterbox jika perlu)
+    // Tidak ada cropping/zoom - tampilkan seluruh frame kamera
+    // =====================================================================
     const imgRatio = imgWidth / imgHeight;
     const screenRatio = screenW / screenH;
     let drawW, drawH, offsetX, offsetY;
 
     if (imgRatio > screenRatio) {
-        // Video lebih lebar → scale by height, crop sisi
-        drawH = screenH;
-        drawW = drawH * imgRatio;
-        offsetX = (screenW - drawW) / 2;
-        offsetY = 0;
-    } else {
-        // Video lebih tinggi → scale by width, crop atas/bawah
+        // Video lebih lebar dari screen → scale by width, letterbox atas/bawah
         drawW = screenW;
         drawH = drawW / imgRatio;
         offsetX = 0;
         offsetY = (screenH - drawH) / 2;
+    } else {
+        // Video lebih tinggi dari screen → scale by height, letterbox kiri/kanan
+        drawH = screenH;
+        drawW = drawH * imgRatio;
+        offsetX = (screenW - drawW) / 2;
+        offsetY = 0;
     }
 
-    // Draw video frame dengan cover scaling + mirror
+    // Simpan scaling factors untuk mapping landmarks
+    canvasScaleX = drawW / imgWidth;
+    canvasScaleY = drawH / imgHeight;
+    canvasOffsetX = offsetX;
+    canvasOffsetY = offsetY;
+
+    // Fill background hitam di area letterbox
+    canvasCtx.fillStyle = '#000000';
+    canvasCtx.fillRect(0, 0, screenW, screenH);
+
+    // Draw video frame dengan contain scaling + mirror
+    canvasCtx.save();
     canvasCtx.translate(screenW, 0);
     canvasCtx.scale(-1, 1);
-    canvasCtx.drawImage(results.image, offsetX, offsetY, drawW, drawH);
+    // Mirror: perlu adjust offset karena kita flip horizontal
+    // Setelah flip, (0,0) jadi di kanan, jadi offsetX perlu di-adjust
+    const mirrorOffsetX = screenW - drawW - offsetX;
+    canvasCtx.drawImage(results.image, mirrorOffsetX, offsetY, drawW, drawH);
+    canvasCtx.restore();
 
     if (!results.poseLandmarks) {
         statusWrapper.className = "status-container status-invalid";
@@ -326,12 +356,23 @@ function onResults(results) {
         return;
     }
 
+    // =====================================================================
+    // FIX: Map landmarks dari koordinat video ke koordinat canvas
+    // MediaPipe landmarks: x,y dalam range 0-1 (relative ke video frame)
+    // =====================================================================
+    const mappedLandmarks = results.poseLandmarks.map(lm => ({
+        ...lm,
+        // Mirror X: 1 - x, lalu scale dan offset
+        x: canvasOffsetX + (1 - lm.x) * drawW,
+        y: canvasOffsetY + lm.y * drawH
+    }));
+
     const koneksiPose = window.POSE_CONNECTIONS || [];
-    drawConnectors(canvasCtx, results.poseLandmarks, koneksiPose, {
+    drawConnectors(canvasCtx, mappedLandmarks, koneksiPose, {
         color: 'rgba(0, 255, 136, 0.6)',
         lineWidth: 3
     });
-    drawLandmarks(canvasCtx, results.poseLandmarks, {
+    drawLandmarks(canvasCtx, mappedLandmarks, {
         color: '#0bfbff',
         lineWidth: 1,
         radius: 4
@@ -339,6 +380,8 @@ function onResults(results) {
     canvasCtx.restore();
 
     const config = MODE_CONFIG[currentMode];
+
+    // Untuk logika, gunakan landmarks asli (0-1) karena sudut tidak tergantung scale
     const landmarks = results.poseLandmarks;
 
     const posisiValid = config.checkPosition(landmarks);
@@ -400,27 +443,50 @@ function onResults(results) {
 }
 
 // =========================================================================
-// KAMERA
+// KAMERA - FIX: Gunakan getUserMedia langsung untuk kontrol penuh
 // =========================================================================
 function startCamera() {
-    const isPortrait = window.innerHeight > window.innerWidth;
-
-    cameraInstance = new Camera(videoElement, {
-        onFrame: async () => {
-            if (videoElement.readyState >= 2) {
-                await pose.send({ image: videoElement });
-            }
+    // Gunakan getUserMedia langsung agar bisa set facingMode dan aspect ratio
+    const constraints = {
+        video: {
+            facingMode: 'user',
+            // Biarkan browser pilih resolusi optimal perangkat
+            // Jangan hardcode width/height agar tidak ngezoom
         },
-        // Kunci aspect ratio sesuai orientasi HP
-        width: isPortrait ? 480 : 640,
-        height: isPortrait ? 640 : 480
-    });
+        audio: false
+    };
 
-    cameraInstance.start().catch(err => {
-        console.error("Akses kamera ditolak:", err);
-        statusText.innerHTML = "ERROR KAMERA";
-        showToast("Akses kamera ditolak!");
-    });
+    navigator.mediaDevices.getUserMedia(constraints)
+        .then(stream => {
+            videoElement.srcObject = stream;
+            videoElement.play();
+
+            // Tunggu video siap, lalu start MediaPipe loop
+            videoElement.onloadedmetadata = () => {
+                console.log('Camera ready:', videoElement.videoWidth, 'x', videoElement.videoHeight);
+
+                // Start MediaPipe processing loop manual
+                processVideoFrame();
+            };
+        })
+        .catch(err => {
+            console.error("Akses kamera ditolak:", err);
+            statusText.innerHTML = "ERROR KAMERA";
+            showToast("Akses kamera ditolak!");
+        });
+}
+
+async function processVideoFrame() {
+    if (!isWorkoutActive) {
+        requestAnimationFrame(processVideoFrame);
+        return;
+    }
+
+    if (videoElement.readyState >= 2) {
+        await pose.send({ image: videoElement });
+    }
+
+    requestAnimationFrame(processVideoFrame);
 }
 
 // =========================================================================
